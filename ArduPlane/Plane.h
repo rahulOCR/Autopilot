@@ -93,6 +93,15 @@
 // Configuration
 #include "config.h"
 
+#if PRECISION_LANDING == ENABLED
+#include <AC_PrecLand/AC_PrecLand.h>
+#include <AC_PrecLand/AC_PrecLand_StateMachine.h>
+#endif
+
+// Lander added for distance to target
+
+#include <AC_Lander/AC_Lander.h>
+
 #if ADVANCED_FAILSAFE == ENABLED
 #include "afs_plane.h"
 #endif
@@ -165,6 +174,9 @@ public:
 
 private:
 
+#if PRECISION_LANDING
+    AC_PrecLand precland;
+#endif
     // key aircraft parameters passed to multiple libraries
     AP_Vehicle::FixedWing aparm;
 
@@ -184,6 +196,16 @@ private:
     RC_Channel *channel_airbrake;
 
     AP_Logger logger;
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+
+    AC_Lander target_lander;
+
+    // used to hold distance to target 
+    float distance_to_target;
+
+    ////////////////////////////////////////////////////////////////////////////////////////
 
     // scaled roll limit based on pitch
     int32_t roll_limit_cd;
@@ -339,6 +361,19 @@ private:
         APPROACH_LINE,
         VTOL_LANDING,
     };
+
+
+    //////////////////////////////////////////////////
+    enum TAKEOFF_AUTH_STATUS
+    {
+        NONE = 0,
+        AUTHENTICATED,
+        UNAUTHENTICATED,
+    };
+
+    // Auth takeoff flag
+    uint8_t auth_takeoff_flag;
+    /////////////////////////////////////////////////
 
 #if HAL_QUADPLANE_ENABLED
     // Landing
@@ -1117,6 +1152,9 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
 
+#if PRECISION_LANDING ==ENABLED
+    void update_precland();
+#endif
     // reverse_thrust.cpp
     bool reversed_throttle;
     bool have_reverse_throttle_rc_option;

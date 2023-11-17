@@ -474,7 +474,25 @@ const AP_Param::GroupInfo QuadPlane::var_info2[] = {
     // @Values: 0.5:Very Soft, 0.2:Soft, 0.15:Medium, 0.1:Crisp, 0.05:Very Crisp
     // @User: Standard
     AP_SUBGROUPINFO(command_model_pilot, "PLT_Y_", 33, QuadPlane, AC_CommandModel),
-
+    // @Param: TARGET_ID
+    // @DisplayName: Landing Target ID
+    // @Description: Landing Target ID
+    // @Range: 0 500
+    // @User: Advanced
+    AP_GROUPINFO("TARGET_ID", 34, QuadPlane, landing_target_id, 31),
+    // @Param: INL_FINAL
+    // @DisplayName: INL_FINAL
+    // @Description: Allow Precision Landing in QPOS_LAND_DECENT
+    // @Range: 0 1
+    // @User: Advanced
+    AP_GROUPINFO("INL_FINAL", 35, QuadPlane, allow_precland_start, 0),
+    // @Param: ALLOW_DCS_CK
+    // @DisplayName: ALLOW_DCS_CK
+    // @Description: Allow Precision Landing to check if we should descend or not
+    // @Range: 0 1
+    // @User: Advanced
+    AP_GROUPINFO("DCS_CK", 36, QuadPlane, allow_decent_check, 0),
+    
     AP_GROUPEND
 };
 
@@ -1211,6 +1229,43 @@ float QuadPlane::landing_descent_rate_cms(float height_above_ground)
             }
         }    
     }
+
+#if PRECISION_LANDING == ENABLED
+
+        if ((allow_decent_check ==1) && precland_active()) {
+        // prec landing is active
+        Vector2f target_pos;
+        float target_error_cm = 0.0f;
+        if (plane.precland.get_target_position_cm(target_pos)) {
+            const Vector2f current_pos = inertial_nav.get_position_xy_cm();
+            // target is this many cm away from the vehicle
+            target_error_cm = (target_pos - current_pos).length();
+        }
+        // check if we should descend or not
+        const float max_horiz_pos_error_cm = plane.precland.get_max_xy_error_before_descending_cm();
+        Vector3f target_pos_meas;
+        plane.precland.get_target_position_measurement_cm(target_pos_meas);
+        if (target_error_cm > max_horiz_pos_error_cm && !is_zero(max_horiz_pos_error_cm)) {
+            // doing precland but too far away from the obstacle
+            // do not descend
+            ret = 0.0f;
+        } else if (target_pos_meas.z > 35.0f && target_pos_meas.z < 200.0f) {
+            // very close to the ground and doing prec land, lets slow down to make sure we land on target
+            // compute desired descent velocity
+            const float precland_acceptable_error_cm = 15.0f;
+            const float precland_min_descent_speed_cms = 10.0f;
+            const float max_descent_speed_cms = abs(wp_nav->get_default_speed_down())*0.5f;
+            const float land_slowdown = MAX(0.0f, target_error_cm*(max_descent_speed_cms/precland_acceptable_error_cm));
+            ret = MAX(precland_min_descent_speed_cms, max_descent_speed_cms-land_slowdown);
+        }
+    }
+
+#endif
+
+
+
+
+
 
     if (poscontrol.pilot_correction_active) {
         // stop descent when repositioning
@@ -2277,6 +2332,66 @@ void QuadPlane::PosControlState::set_state(enum position_control_state s)
     last_run_ms = now;
 }
 
+// precision landing horizontal controller. Ensure Precision Landing is active before calling this
+void QuadPlane::run_precland_horizontal_controller()
+{
+#if PRECISION_LANDING == ENABLED
+    // run precision landing
+    if (precland_active()) {
+        Vector2f target_pos, target_vel;
+        if (!plane.precland.get_target_position_cm(target_pos)) {
+            target_pos = inertial_nav.get_position_xy_cm();
+        }
+         // get the velocity of the target
+        plane.precland.get_target_velocity_cms(inertial_nav.get_velocity_xy_cms(), target_vel);
+
+        const Vector2f zero;
+        Vector2p landing_pos = target_pos.topostype();
+        // target vel will remain zero if landing target is stationary
+        pos_control->input_pos_vel_accel_xy(landing_pos, target_vel, zero);
+            
+            
+            
+           
+            // if (!plane.precland.get_target_position_cm(target_pos)) {
+            //     target_pos.x = inertial_nav.get_position_xy_cm().x;
+            //     target_pos.y = inertial_nav.get_position_xy_cm().y;
+            // }
+            // if (!plane.precland.get_target_velocity_relative_cms(target_vel)) {
+            //     target_vel.x = -inertial_nav.get_velocity_xy_cms().x;
+            //     target_vel.y = -inertial_nav.get_velocity_xy_cms().y;
+            // }
+            // pos_control->set_pos_target_xy_cm(target_pos.x, target_pos.y);
+            // pos_control->set_vel_desired_xy_cms(-target_vel);
+        
+    } else {
+        // should never happen since the caller of this funtion should already check if precland is active
+        Vector2f zero;
+        pos_control->input_vel_accel_xy(zero, zero);
+        // plane.precland.enabled();
+
+    }
+#endif
+}
+
+bool QuadPlane::precland_active(void)
+{
+#if PRECISION_LANDING == ENABLED
+    const bool manual_control_active = (plane.channel_roll->get_control_in() != 0) || (plane.channel_pitch->get_control_in() !=  0);
+    if (manual_control_active) {
+        land_repo_active = true;
+    }
+
+    if (!land_repo_active) 
+    {
+        return plane.precland.target_acquired();
+    } 
+   
+
+#endif
+    return false;
+}
+
 /*
   main landing controller. Used for landing and RTL.
  */
@@ -2650,9 +2765,22 @@ void QuadPlane::vtol_position_controller(void)
         /*
           for final land repositioning and descent we run the position controller
          */
-        Vector2f zero;
-        Vector2f vel_cms = poscontrol.target_vel_cms.xy() + landing_velocity*100;
-        pos_control->input_pos_vel_accel_xy(poscontrol.target_cm.xy(), vel_cms, zero);
+
+         if ((allow_precland_start == 1) && precland_active()) {
+            run_precland_horizontal_controller();
+            
+        } 
+
+        else
+        {     
+            Vector2f zero;
+            Vector2f vel_cms = poscontrol.target_vel_cms.xy() + landing_velocity*100;
+            pos_control->input_pos_vel_accel_xy(poscontrol.target_cm.xy(), vel_cms, zero);
+
+        }
+       
+        
+        
 
         // also run fixed wing navigation
         plane.nav_controller->update_waypoint(plane.current_loc, loc);
@@ -2681,9 +2809,19 @@ void QuadPlane::vtol_position_controller(void)
         update_land_positioning();
 
         // relax when close to the ground
-        if (should_relax()) {
+        if (should_relax()) 
+        {
             pos_control->relax_velocity_controller_xy();
-        } else {
+
+        } else if (precland_active()) {
+            // precland active
+            run_precland_horizontal_controller(); 
+            // printf("active\n");
+        
+        }
+
+
+        else {
             Vector2f zero;
             Vector2f vel_cms = poscontrol.target_vel_cms.xy() + landing_velocity*100;
             Vector2f rpos;
@@ -2703,7 +2841,23 @@ void QuadPlane::vtol_position_controller(void)
             }
         }
 
-        run_xy_controller();
+        
+        
+        // run appropriate controller
+
+        // if(precland_active())
+        // {
+            if (!pos_control->is_active_xy()) {
+                pos_control->init_xy_controller();
+            }
+
+            pos_control->update_xy_controller();
+
+        // }
+
+        // else
+        //     run_xy_controller();
+
 
         // nav roll and pitch are controller by position controller
         plane.nav_roll_cd = pos_control->get_roll_cd();
@@ -3276,6 +3430,8 @@ bool QuadPlane::check_land_final(void)
     // trigger the switch to land final. This prevents a short term
     // glitch at high altitude from triggering land final
     const float max_change = 5;
+    // debug
+    // gcs().send_text(MAV_SEVERITY_INFO, "%f %f %f", height_above_ground, (float)land_final_alt, last_land_final_agl);
     if (height_above_ground < land_final_alt &&
         fabsf(height_above_ground - last_land_final_agl) < max_change) {
         return true;

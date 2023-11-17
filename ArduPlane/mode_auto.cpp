@@ -14,12 +14,20 @@ bool ModeAuto::_enter()
             return false;
         }
     }
+
+    // if(plane.auth_takeoff_flag != Plane::TAKEOFF_AUTH_STATUS::AUTHENTICATED)
+    // {
+    //     gcs().send_text(MAV_SEVERITY_ERROR,"Command accepted only from webgcs");
+    //     return false;
+    // }
+
     
     if (plane.quadplane.available() && plane.quadplane.enable == 2) {
         plane.auto_state.vtol_mode = true;
     } else {
         plane.auto_state.vtol_mode = false;
     }
+    plane.quadplane.land_repo_active = false;
 #else
     plane.auto_state.vtol_mode = false;
 #endif
@@ -46,7 +54,7 @@ void ModeAuto::_exit()
 {
     if (plane.mission.state() == AP_Mission::MISSION_RUNNING) {
         plane.mission.stop();
-
+        plane.auth_takeoff_flag = Plane::TAKEOFF_AUTH_STATUS::NONE;
         bool restart = plane.mission.get_current_nav_cmd().id == MAV_CMD_NAV_LAND;
 #if HAL_QUADPLANE_ENABLED
         if (plane.quadplane.is_vtol_land(plane.mission.get_current_nav_cmd().id)) {
@@ -69,6 +77,8 @@ void ModeAuto::update()
         gcs().send_text(MAV_SEVERITY_INFO, "Aircraft in auto without a running mission");
         return;
     }
+
+    
 
     uint16_t nav_cmd_id = plane.mission.get_current_nav_cmd().id;
 
