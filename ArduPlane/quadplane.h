@@ -25,6 +25,7 @@
 #include "tailsitter.h"
 #include "tiltrotor.h"
 #include "transition.h"
+#include "config.h"
 
 /*
   QuadPlane specific functionality
@@ -79,6 +80,14 @@ public:
     void update_land_positioning(void);
 
     void update_throttle_mix(void);
+
+// precision landing horizontal controller. Ensure Precision Landing is active before calling this
+    void run_precland_horizontal_controller();
+    bool precland_active(void);
+
+#if PRECISION_LANDING == ENABLED
+    void set_precision_loiter_enabled(bool value) { _precision_loiter_enabled = value; }
+#endif
     
     // update transition handling
     void update(void);
@@ -433,6 +442,8 @@ private:
     */
     bool guided_wait_takeoff;
     bool guided_wait_takeoff_on_mode_enter;
+    bool land_repo_active;
+    bool _precision_loiter_enabled;
 
     struct {
         // time when motors reached lower limit
@@ -567,8 +578,31 @@ private:
     AP_Float maximum_takeoff_airspeed;
     uint32_t takeoff_start_time_ms;
     uint32_t takeoff_time_limit_ms;
+    
+
+
+
 
     float last_land_final_agl;
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+
+    
+
+    // TARGET_ID 
+    AP_Int32 landing_target_id;
+
+    // Allow Precision Landing in LAND first
+    AP_Int8 allow_precland_start;
+
+    // Allow Precision Landing to check if we should descend or not
+    AP_Int8 allow_decent_check;
+
+    
+
+
+////////////////////////////////////////////////////////////////////////////////////////
 
     // min alt for navigation in takeoff
     AP_Float takeoff_navalt_min;

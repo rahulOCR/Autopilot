@@ -195,6 +195,24 @@ const AP_Param::Info Copter::var_info[] = {
     // @User: Standard
     GSCALAR(wp_yaw_behavior,  "WP_YAW_BEHAVIOR",    WP_YAW_BEHAVIOR_DEFAULT),
 
+    // @Param: LAND_ACCEL
+    // @DisplayName: Land acceleration 
+    // @Description: Limits maximum acceleration during landing. WPNAV_ACCEL is used if this parameter is zero
+    // @Units: cm/s/s
+    // @Range: 0 100
+    // @Increment: 1
+    // @User: Advanced
+    GSCALAR(land_accel_limit, "LAND_ACCEL", 0),
+
+    // @Param: LAND_SPD
+    // @DisplayName: Land velocity 
+    // @Description: Limits maximum velocity during landing. WPNAV_SPEED is used if this parameter is zero
+    // @Units: cm/s
+    // @Range: 0 1000
+    // @Increment: 1
+    // @User: Advanced
+    GSCALAR(land_vel_limit, "LAND_SPD", 0),
+    
     // @Param: LAND_SPEED
     // @DisplayName: Land speed
     // @Description: The descent speed for the final stage of landing in cm/s

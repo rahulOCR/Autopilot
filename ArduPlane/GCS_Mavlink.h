@@ -26,10 +26,16 @@ protected:
     MAV_RESULT handle_command_do_set_mission_current(const mavlink_command_long_t &packet) override;
 
     void send_position_target_global_int() override;
+    void handle_landing_target(const mavlink_landing_target_t &packet, uint32_t timestamp_ms) override;
+    void handle_land_sensor_status(const mavlink_land_sensor_status_t &packet) override;
+    void handle_takeoff_auth(const mavlink_auth_takeoff_t &packet) override;
+    // handle credential request
+    void handle_cred_request(const mavlink_req_uav_cred_t &packet) override;
 
     void send_aoa_ssa();
     void send_attitude() const override;
     void send_wind() const;
+    void send_uav_cred() override;
 
     bool persist_streamrates() const override { return true; }
 

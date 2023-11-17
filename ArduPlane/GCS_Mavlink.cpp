@@ -124,6 +124,114 @@ MAV_STATE GCS_MAVLINK_Plane::vehicle_system_status() const
     return MAV_STATE_STANDBY;
 }
 
+// Precise landing target handling
+void GCS_MAVLINK_Plane::handle_landing_target(const mavlink_landing_target_t &packet, uint32_t timestamp_ms)
+{
+    if(packet.distance <= 0.0f)
+    {
+        // const float _distance_to_target = plane.relative_ground_altitude(plane.g.rangefinder_landing);
+
+        plane.distance_to_target = 0.0f;
+        plane.target_lander.get_reading(plane.distance_to_target);
+    
+        mavlink_landing_target_t lnd_msg;
+        lnd_msg.angle_x = packet.angle_x;
+        lnd_msg.angle_y = packet.angle_y;
+        lnd_msg.frame = packet.frame;
+        lnd_msg.time_usec = packet.time_usec;
+        lnd_msg.distance = plane.distance_to_target;
+#if PRECISION_LANDING==ENABLED
+        plane.precland.handle_msg(lnd_msg, timestamp_ms);
+#endif
+    }
+    else
+#if PRECISION_LANDING==ENABLED
+        plane.precland.handle_msg(packet, timestamp_ms);
+#endif
+
+
+}
+
+
+// Precise landing target handling
+void GCS_MAVLINK_Plane::handle_land_sensor_status(const mavlink_land_sensor_status_t &packet)
+{
+
+    if(packet.sensor_status == 1)
+        gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is connected");
+
+    else if(packet.sensor_status == 2)  
+        gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is not connected");
+
+}
+
+void GCS_MAVLINK_Plane::handle_takeoff_auth(const mavlink_auth_takeoff_t &packet)
+{
+    switch (packet.status)
+    {
+        case Plane::TAKEOFF_AUTH_STATUS::AUTHENTICATED:
+            gcs().send_text(MAV_SEVERITY_INFO, "WebGCS Authenticated");
+            plane.auth_takeoff_flag = packet.status;
+        break;
+
+        case Plane::TAKEOFF_AUTH_STATUS::UNAUTHENTICATED:
+            gcs().send_text(MAV_SEVERITY_INFO, "WebGCS Authentication released");
+            plane.auth_takeoff_flag = packet.status;
+        break;
+
+        default:
+            break;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+void GCS_MAVLINK_Plane::send_uav_cred()
+{
+    char user_id[40];
+    char password[40];
+    
+
+    // gcs().enable_high_latency_connections(true);
+
+    // hal.console->println("");
+
+    // read credentials from ROMFS/EEPROM
+    // plane.read_credentials(user_id, password);
+    strcpy(user_id, UAS_ID);
+    strcpy(password,UAS_PASSWORD);
+
+
+    mavlink_msg_uav_cred_send(chan,user_id ,password );
+    
+}
+
+// handle credential request
+void GCS_MAVLINK_Plane::handle_cred_request(const mavlink_req_uav_cred_t &packet)
+{
+    switch (packet.status)
+    {
+        case 1:
+            // read credentials and store to eeprom
+            // packet.uav_id;
+            // packet.password;
+            // plane.write_credentials(packet.uav_id, packet.uav_id);
+            break;
+
+
+        case 0:
+            // send credentials to GCS
+            gcs().send_message(MSG_UAV_CRED);
+            break;
+
+        default:
+            
+            gcs().send_text(MAV_SEVERITY_INFO, "CRED MANAGER: Invalid request");
+            break;
+    }
+
+}
+
 
 void GCS_MAVLINK_Plane::send_attitude() const
 {

@@ -57,6 +57,9 @@ void Plane::init_ardupilot()
     // init baro
     barometer.init();
 
+    //  hard coded serial 4 (GPS 2)
+    target_lander.init(4);
+
     // initialise rangefinder
     rangefinder.set_log_rfnd_bit(MASK_LOG_SONAR);
     rangefinder.init(ROTATION_PITCH_270);
@@ -96,6 +99,10 @@ void Plane::init_ardupilot()
 #if HAL_MOUNT_ENABLED
     // initialise camera mount
     camera_mount.init();
+#endif
+
+#if PRECISION_LANDING
+    precland.init(AP::scheduler().get_loop_rate_hz());
 #endif
 
 #if LANDING_GEAR_ENABLED == ENABLED

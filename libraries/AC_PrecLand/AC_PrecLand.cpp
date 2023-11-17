@@ -624,7 +624,8 @@ bool AC_PrecLand::retrieve_los_meas(Vector3f& target_vec_unit_body)
         }
 
         return true;
-    } else {
+    } else
+    {
         return false;
     }
 }
@@ -657,6 +658,7 @@ bool AC_PrecLand::construct_pos_meas_using_rangefinder(float rangefinder_alt_m, 
                 // rely on rangefinder for the vertical target
                 dist_to_target_along_av = MAX(rangefinder_alt_m - cam_pos_ned.projected(approach_vector_NED).length(), 0.0f);
                 dist_to_target = dist_to_target_along_av / target_vec_unit_ned.projected(approach_vector_NED).length();
+                // dist_to_target = rangefinder_alt_m ;
             }
 
             // Compute camera position relative to IMU
@@ -664,6 +666,7 @@ bool AC_PrecLand::construct_pos_meas_using_rangefinder(float rangefinder_alt_m, 
             const Vector3f cam_pos_ned_rel_imu = cam_pos_ned - accel_pos_ned;
 
             // Compute target position relative to IMU
+            // USED here distance to target
             _target_pos_rel_meas_NED = (target_vec_unit_ned * dist_to_target) + cam_pos_ned_rel_imu;
 
             // store the current relative down position so that if we need to retry landing, we know at this height landing target can be found
@@ -752,8 +755,8 @@ void AC_PrecLand::Write_Precland()
         pos_y           : target_pos_rel.y,
         vel_x           : target_vel_rel.x,
         vel_y           : target_vel_rel.y,
-        meas_x          : target_pos_meas.x,
-        meas_y          : target_pos_meas.y,
+        meas_x          : _target_pos_rel_out_NE.x,
+        meas_y          : _target_pos_rel_out_NE.y,
         meas_z          : target_pos_meas.z,
         last_meas       : last_backend_los_meas_ms(),
         ekf_outcount    : ekf_outlier_count(),

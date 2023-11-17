@@ -603,6 +603,13 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
+
+    // if(copter.ahrs.healthy()) {
+    //     float ahrsGndSpdLimit, ahrsControlScaleXY;
+    //     copter.ahrs.getControlLimits(ahrsGndSpdLimit, ahrsControlScaleXY);
+    //     hal.console->printf("Gndspeedlimt = %f, factor = %f\n", ahrsGndSpdLimit, ahrsControlScaleXY);
+    // }
+
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
     }

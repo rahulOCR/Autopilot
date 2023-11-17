@@ -199,6 +199,18 @@ void GCS_MAVLINK_Copter::send_position_target_local_ned()
 #endif
 }
 
+// Precise landing target handling
+void GCS_MAVLINK_Copter::handle_land_sensor_status(const mavlink_land_sensor_status_t &packet)
+{
+
+    if(packet.sensor_status == 1)
+        gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is connected");
+
+    else if(packet.sensor_status == 2)  
+        gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is not connected");
+
+}
+
 void GCS_MAVLINK_Copter::send_nav_controller_output() const
 {
     if (!copter.ap.initialised) {

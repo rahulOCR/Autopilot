@@ -311,6 +311,9 @@ public:
     void send_named_float(const char *name, float value) const;
     void send_home_position() const;
     void send_gps_global_origin() const;
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    virtual void send_uav_cred() {};
+    ////////////////////////// Sending cred for testing //////////////////////////////////
     virtual void send_attitude_target() {};
     virtual void send_position_target_global_int() { };
     virtual void send_position_target_local_ned() { };
@@ -597,6 +600,16 @@ protected:
 
     // default empty handling of LANDING_TARGET
     virtual void handle_landing_target(const mavlink_landing_target_t &packet, uint32_t timestamp_ms) { }
+
+    // handle IPLS sensor status
+    virtual void handle_land_sensor_status(const mavlink_land_sensor_status_t &packet) {}
+
+    // handle auth takeoff
+    virtual void handle_takeoff_auth(const mavlink_auth_takeoff_t &packet) {}
+
+    // handle credential request
+    virtual void handle_cred_request(const mavlink_req_uav_cred_t &packet) {}
+
     // vehicle-overridable message send function
     virtual bool try_send_message(enum ap_message id);
     virtual void send_global_position_int();
@@ -933,7 +946,9 @@ private:
                                                      const uint16_t payload_size);
     void handle_vision_speed_estimate(const mavlink_message_t &msg);
     void handle_landing_target(const mavlink_message_t &msg);
-
+    void handle_land_sensor_status(const mavlink_message_t &msg);
+    void handle_takeoff_auth(const mavlink_message_t &msg);
+    void handle_cred_request(const mavlink_message_t &msg);
     void lock_channel(const mavlink_channel_t chan, bool lock);
 
     mavlink_signing_t signing;

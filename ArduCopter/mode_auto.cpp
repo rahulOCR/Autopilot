@@ -383,8 +383,18 @@ void ModeAuto::wp_start(const Location& dest_loc)
 void ModeAuto::land_start()
 {
     // set horizontal speed and acceleration limits
-    pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
-    pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+    const float adjusted_acceleration  = (float)copter.g.land_accel_limit.get();
+    const float adjusted_xy_speed = (float)copter.g.land_vel_limit.get();
+
+    if (is_positive(adjusted_acceleration) && is_positive(adjusted_xy_speed)) {
+        pos_control->set_max_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration );
+        pos_control->set_correction_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration);
+    
+
+    } else {
+        pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+        pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+    }
 
     // initialise the vertical position controller
     if (!pos_control->is_active_xy()) {
@@ -532,8 +542,18 @@ void ModeAuto::payload_place_start()
     nav_payload_place.state = PayloadPlaceStateType_Calibrating_Hover_Start;
 
     // set horizontal speed and acceleration limits
-    pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
-    pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+    const float adjusted_acceleration  = (float)copter.g.land_accel_limit.get();
+    const float adjusted_xy_speed = (float)copter.g.land_vel_limit.get();
+
+    if (is_positive(adjusted_acceleration) && is_positive(adjusted_xy_speed)) {
+        pos_control->set_max_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration );
+        pos_control->set_correction_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration);
+    
+
+    } else {
+        pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+        pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+    }
 
     // initialise the vertical position controller
     if (!pos_control->is_active_xy()) {
@@ -1105,8 +1125,18 @@ void ModeAuto::loiter_to_alt_run()
 
     if (!loiter_to_alt.loiter_start_done) {
         // set horizontal speed and acceleration limits
-        pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
-        pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+        const float adjusted_acceleration  = (float)copter.g.land_accel_limit.get();
+        const float adjusted_xy_speed = (float)copter.g.land_vel_limit.get();
+
+        if (is_positive(adjusted_acceleration) && is_positive(adjusted_xy_speed)) {
+            pos_control->set_max_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration );
+            pos_control->set_correction_speed_accel_xy(adjusted_xy_speed, adjusted_acceleration);
+    
+
+        } else {
+            pos_control->set_max_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+            pos_control->set_correction_speed_accel_xy(wp_nav->get_default_speed_xy(), wp_nav->get_wp_acceleration());
+        }
 
         if (!pos_control->is_active_xy()) {
             pos_control->init_xy_controller();

@@ -378,9 +378,16 @@ public:
 
         k_param_vehicle = 257, // vehicle common block of parameters
 
+        k_param_land_accel_limit,
+        k_param_land_vel_limit,
+
         // the k_param_* space is 9-bits in size
         // 511: reserved
     };
+
+
+    AP_Float        land_accel_limit;
+    AP_Float        land_vel_limit;
 
     AP_Int16        format_version;
 

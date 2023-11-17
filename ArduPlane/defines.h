@@ -8,7 +8,11 @@
 
 #define MIN_AIRSPEED_MIN 5 // m/s, used for arming check and speed scaling
 
-// failsafe
+
+
+
+#define UAS_ID "test"
+#define UAS_PASSWORD "test"
 // ----------------------
 enum failsafe_state {
     FAILSAFE_NONE=0,

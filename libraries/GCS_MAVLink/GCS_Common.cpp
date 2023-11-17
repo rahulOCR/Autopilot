@@ -3865,6 +3865,19 @@ void GCS_MAVLINK::handle_common_message(const mavlink_message_t &msg)
         handle_landing_target(msg);
         break;
 
+    
+    case MAVLINK_MSG_ID_LAND_SENSOR_STATUS:
+        handle_land_sensor_status(msg);
+        break;
+
+    case MAVLINK_MSG_ID_AUTH_TAKEOFF:
+        handle_takeoff_auth(msg);
+        break;
+
+    case MAVLINK_MSG_ID_REQ_UAV_CRED:
+        handle_cred_request(msg);
+        break;
+
     case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
         handle_named_value(msg);
         break;
@@ -4837,6 +4850,28 @@ void GCS_MAVLINK::handle_landing_target(const mavlink_message_t &msg)
 }
 
 
+void GCS_MAVLINK::handle_land_sensor_status(const mavlink_message_t &msg)
+{
+    mavlink_land_sensor_status_t m;
+    mavlink_msg_land_sensor_status_decode(&msg, &m);
+    handle_land_sensor_status(m);
+}
+
+void GCS_MAVLINK::handle_takeoff_auth(const mavlink_message_t &msg)
+{
+
+    mavlink_auth_takeoff_t m;
+    mavlink_msg_auth_takeoff_decode(&msg, &m);
+    handle_takeoff_auth(m);
+}
+
+void GCS_MAVLINK::handle_cred_request(const mavlink_message_t &msg)
+{
+    mavlink_req_uav_cred_t m;
+    mavlink_msg_req_uav_cred_decode(&msg, &m);
+    handle_cred_request(m);
+}
+
 MAV_RESULT GCS_MAVLINK::handle_command_int_do_set_home(const mavlink_command_int_t &packet)
 {
     if (is_equal(packet.param1, 1.0f) || (packet.x == 0 && packet.y == 0)) {
@@ -5524,6 +5559,11 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
     case MSG_ATTITUDE_TARGET:
         CHECK_PAYLOAD_SIZE(ATTITUDE_TARGET);
         send_attitude_target();
+        break;
+
+    case MSG_UAV_CRED:
+        CHECK_PAYLOAD_SIZE(UAV_CRED);
+        send_uav_cred();
         break;
 
     case MSG_POSITION_TARGET_GLOBAL_INT:
