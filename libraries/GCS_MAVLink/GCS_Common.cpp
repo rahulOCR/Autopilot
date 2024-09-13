@@ -5411,6 +5411,11 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
         send_uav_cred();
         break;
 
+    case MSG_DISTANCE_TRAVELLED:
+        CHECK_PAYLOAD_SIZE(DISTANCE_TRAVELLED);
+        send_distance_travelled();
+        break;
+
     case MSG_ATTITUDE_QUATERNION:
         CHECK_PAYLOAD_SIZE(ATTITUDE_QUATERNION);
         send_attitude_quaternion();

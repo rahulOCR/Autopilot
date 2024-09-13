@@ -203,7 +203,7 @@ private:
 
     AP_Credential cred;
     AC_Lander target_lander;
-
+    float distance_travelled;
     // used to hold distance to target 
     float distance_to_target;
 

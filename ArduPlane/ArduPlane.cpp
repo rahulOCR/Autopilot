@@ -298,6 +298,12 @@ extern AP_IOMCU iomcu;
 
 void Plane::one_second_loop()
 {
+    // send total distance travelled message using ground speed from first GPS instead
+    if(plane.arming.is_armed() && ahrs.home_is_set()) {
+        distance_travelled += gps.ground_speed(0);
+        gcs().send_message(MSG_DISTANCE_TRAVELLED);
+    }
+    
     // make it possible to change control channel ordering at runtime
     set_control_channels();
 

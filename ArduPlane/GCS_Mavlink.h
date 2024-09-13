@@ -36,6 +36,7 @@ protected:
     void send_attitude() const override;
     void send_wind() const;
     void send_uav_cred() override;
+    void send_distance_travelled() override;
 
     bool persist_streamrates() const override { return true; }
 
