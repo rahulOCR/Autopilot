@@ -300,6 +300,7 @@ public:
 #if AP_OPTICALFLOW_ENABLED
     void send_opticalflow();
 #endif
+    virtual void send_uav_cred() {};
     virtual void send_attitude() const;
     virtual void send_attitude_quaternion() const;
     void send_autopilot_version() const;
@@ -603,6 +604,9 @@ protected:
 
     // handle auth takeoff
     virtual void handle_takeoff_auth(const mavlink_auth_takeoff_t &packet) {}
+    
+    // handle credentials
+    virtual void handle_cred_request(const mavlink_req_uav_cred_t &packet) {};
 
     // vehicle-overridable message send function
     virtual bool try_send_message(enum ap_message id);
@@ -942,6 +946,7 @@ private:
     void handle_landing_target(const mavlink_message_t &msg);
     void handle_land_sensor_status(const mavlink_message_t &msg);
     void handle_takeoff_auth(const mavlink_message_t &msg);
+    void handle_cred_request(const mavlink_message_t &msg);
 
     void lock_channel(const mavlink_channel_t chan, bool lock);
 

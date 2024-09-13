@@ -150,6 +150,44 @@ void GCS_MAVLINK_Plane::handle_landing_target(const mavlink_landing_target_t &pa
 
 }
 
+void GCS_MAVLINK_Plane::send_uav_cred()
+{
+    // read credentials from ROMFS/EEPROM
+    char user_id[40];
+    char password[40];
+    if(plane.cred.read_credential(user_id, password))
+        mavlink_msg_uav_cred_send(chan, (const char*)user_id , (const char*)password );
+    else
+        gcs().send_text(MAV_SEVERITY_INFO, "Unable to retrieve credentials !");
+    
+}
+
+// handle credential request
+void GCS_MAVLINK_Plane::handle_cred_request(const mavlink_req_uav_cred_t &packet)
+{
+    switch (packet.status)
+    {
+        // WRITE IN SYSTEM
+        case 1:
+            if(plane.cred.write_credential((char *)packet.uav_id, (char *)packet.password))
+                gcs().send_text(MAV_SEVERITY_INFO, "Credentials accepted !");
+            else
+                gcs().send_text(MAV_SEVERITY_INFO, "Error: unable to accept credentials !");
+            break;
+
+        // READ FROM SYSTEM
+        case 0:
+            // send credentials to GCS
+            gcs().send_message(MSG_UAV_CRED);
+            break;
+
+        default:
+            
+            gcs().send_text(MAV_SEVERITY_INFO, "CRED MANAGER: Invalid request");
+            break;
+    }
+
+}
 
 // Precise landing target handling
 void GCS_MAVLINK_Plane::handle_land_sensor_status(const mavlink_land_sensor_status_t &packet)

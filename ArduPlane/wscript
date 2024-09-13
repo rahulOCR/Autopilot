@@ -33,6 +33,7 @@ def build(bld):
             'AP_IRLock',
             'AC_PrecLand',
             'AC_Lander',
+            'AP_Credential',
         ],
     )
 

@@ -101,6 +101,7 @@
 // Lander added for distance to target
 
 #include <AC_Lander/AC_Lander.h>
+#include <AP_Credential/AP_Credential.h>
 
 #if ADVANCED_FAILSAFE == ENABLED
 #include "afs_plane.h"
@@ -200,6 +201,7 @@ private:
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
+    AP_Credential cred;
     AC_Lander target_lander;
 
     // used to hold distance to target 
