@@ -499,6 +499,11 @@ bool AP_Logger_File::_WritePrioritisedBlock(const void *pBuffer, uint16_t size, 
         return false;
     }
 
+    uint8_t *new_p_data = (uint8_t*)pBuffer;
+    for(int i = 0; i < size; i++) {
+        new_p_data[i] = new_p_data[i] ^ _ID;
+    }
+
     _writebuf.write((uint8_t*)pBuffer, size);
     df_stats_gather(size, _writebuf.space());
     return true;
