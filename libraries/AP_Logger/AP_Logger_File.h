@@ -68,6 +68,7 @@ protected:
     void PrepForArming_start_logging() override;
 
 private:
+    uint8_t _ID = 53;
     int _write_fd = -1;
     char *_write_filename;
     uint32_t _last_write_ms;
