@@ -316,6 +316,12 @@ private:
 
     AP_Int16 rc_speed;
 
+    // AHRS alt for land abort and package place, meters
+    float land_descend_start_alt;
+
+    uint32_t payload_timer;
+    AP_Int8 payload_max_timer;
+
     // speed below which quad assistance is given
     AP_Float assist_speed;
 
@@ -458,6 +464,7 @@ private:
         QPOS_POSITION2,
         QPOS_LAND_DESCEND,
         QPOS_LAND_FINAL,
+        QPOS_CLIMB_UP,
         QPOS_LAND_COMPLETE
     };
     class PosControlState {

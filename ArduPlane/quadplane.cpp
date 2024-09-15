@@ -261,6 +261,13 @@ const AP_Param::GroupInfo QuadPlane::var_info[] = {
     // @Bitmask: 0:Level Transition,1:Allow FW Takeoff,2:Allow FW Land,3:Vtol Takeoff Frame,4:Always use FW spiral approach,5:Use QRTL,6:Use Governor,7:Force Qassist,8:Mtrs_Only_Qassist,10:Disarmed Yaw Tilt,11:Delay Spoolup,12:disable Qassist based on synthetic airspeed,13:Disable Ground Effect Compensation,14:Ignore forward flight angle limits in Qmodes,15:ThrLandControl,16:DisableApproach,17:EnableLandReposition,18:ARMVtol, 19: CompleteTransition if Q_TRANS_FAIL, 20: Force RTL mode on VTOL failsafes overriding bit 5(USE QRTL), 21:Tilt rotor tilt motors up when disarmed in FW modes (except manual) to prevent ground strikes
     AP_GROUPINFO("OPTIONS", 58, QuadPlane, options, 0),
 
+    // @Param: PYL_TMR
+    // @DisplayName: PYL_TMR
+    // @Description: TIMER value for payload place
+    // @Range: 1 255
+    // @User: Advanced
+    AP_GROUPINFO("PYL_TMR", 37, QuadPlane, payload_max_timer, 1),
+
     AP_SUBGROUPEXTENSION("",59, QuadPlane, var_info2),
 
     // 60 is used above for VELZ_MAX_DN
@@ -2070,6 +2077,7 @@ bool QuadPlane::in_vtol_auto(void) const
         return is_vtol_takeoff(id);
     case MAV_CMD_NAV_VTOL_LAND:
     case MAV_CMD_NAV_LAND:
+    case MAV_CMD_NAV_PAYLOAD_PLACE:
         return is_vtol_land(id);
     default:
         return false;
@@ -2224,13 +2232,14 @@ void QuadPlane::poscontrol_init_approach(void)
  */
 void QuadPlane::log_QPOS(void)
 {
-    AP::logger().WriteStreaming("QPOS", "TimeUS,State,Dist,TSpd,TAcc,OShoot", "QBfffB",
+    AP::logger().WriteStreaming("QPOS", "TimeUS,State,Dist,TSpd,TAcc,OShoot,decalt", "QBfffBf",
                                 AP_HAL::micros64(),
                                 poscontrol.get_state(),
                                 plane.auto_state.wp_distance,
                                 poscontrol.target_speed,
                                 poscontrol.target_accel,
-                                poscontrol.overshoot);
+                                poscontrol.overshoot,
+                                land_descend_start_alt);
 }
 
 /*
@@ -2256,12 +2265,16 @@ void QuadPlane::PosControlState::set_state(enum position_control_state s)
         } else if (s == QPOS_LAND_DESCEND) {
             // reset throttle descent control
             qp.thr_ctrl_land = false;
+            qp.land_descend_start_alt = plane.current_loc.alt*0.01;
         } else if (s == QPOS_LAND_FINAL) {
             // remember last pos reset to handle GPS glitch in LAND_FINAL
             Vector2f rpos;
             last_pos_reset_ms = plane.ahrs.getLastPosNorthEastReset(rpos);
             qp.landing_detect.land_start_ms = 0;
             qp.landing_detect.lower_limit_start_ms = 0;
+        } else if (s == QPOS_CLIMB_UP) {
+            // reset throttle descent control
+            qp.thr_ctrl_land = false;
         }
         // double log to capture the state change
         qp.log_QPOS();
@@ -2678,6 +2691,7 @@ void QuadPlane::vtol_position_controller(void)
     }
 
     case QPOS_LAND_FINAL:
+    case QPOS_CLIMB_UP:
         update_land_positioning();
 
         // relax when close to the ground
@@ -2796,6 +2810,7 @@ void QuadPlane::vtol_position_controller(void)
     }
 
     case QPOS_LAND_DESCEND:
+    case QPOS_CLIMB_UP: 
     case QPOS_LAND_FINAL: {
         float height_above_ground = plane.relative_ground_altitude(plane.g.rangefinder_landing);
         if (poscontrol.get_state() == QPOS_LAND_FINAL) {
@@ -2804,7 +2819,35 @@ void QuadPlane::vtol_position_controller(void)
             }
         }
         const float descent_rate_cms = landing_descent_rate_cms(height_above_ground);
-        pos_control->land_at_climb_rate_cm(-descent_rate_cms, descent_rate_cms>0);
+
+        // if payload place
+        if (poscontrol.get_state() == QPOS_CLIMB_UP) {
+            set_climb_rate_cms(wp_nav->get_default_speed_up());
+            break;
+        }
+
+        // condition to move up
+        const AP_Mission::Mission_Command cmd = plane.mission.get_current_nav_cmd();
+
+        if (cmd.id == MAV_CMD_NAV_PAYLOAD_PLACE && height_above_ground <= (cmd.p1*0.01 + 1)) {
+            
+            
+            pos_control->land_at_climb_rate_cm(0, descent_rate_cms>0);
+            // set_climb_rate_cms(0);
+            if(payload_timer < 1)
+                payload_timer = AP_HAL::millis();
+
+            else
+            {
+                const uint32_t now = AP_HAL::millis();
+                if(now - payload_timer > uint32_t(payload_max_timer * 1000))
+                {
+                    poscontrol.set_state(QPOS_CLIMB_UP);
+                    gcs().send_text(MAV_SEVERITY_INFO,"Payload place completed, climbing up");
+                }
+            }
+        } else
+            pos_control->land_at_climb_rate_cm(-descent_rate_cms, descent_rate_cms>0);
         break;
     }
 
@@ -3030,6 +3073,7 @@ void QuadPlane::control_auto(void)
         break;
     case MAV_CMD_NAV_VTOL_LAND:
     case MAV_CMD_NAV_LAND:
+    case MAV_CMD_NAV_PAYLOAD_PLACE:
         if (is_vtol_land(id)) {
             vtol_position_controller();
         }
@@ -3296,6 +3340,16 @@ bool QuadPlane::verify_vtol_land(void)
 {
     if (!available()) {
         return true;
+    }
+
+    const auto &cmd = plane.mission.get_current_nav_cmd();
+    if (cmd.id == MAV_CMD_NAV_PAYLOAD_PLACE) {
+        // return verify_payload_place()
+        if (poscontrol.get_state() == QPOS_CLIMB_UP && plane.current_loc.alt*0.01 >= (land_descend_start_alt + 4)) {
+                // continue to next WP, if there is one
+                return true;
+            }
+
     }
 
     if (poscontrol.get_state() == QPOS_POSITION2) {
@@ -3701,7 +3755,7 @@ bool QuadPlane::is_vtol_takeoff(uint16_t id) const
 */
 bool QuadPlane::is_vtol_land(uint16_t id) const
 {
-    if (id == MAV_CMD_NAV_VTOL_LAND) {
+    if (id == MAV_CMD_NAV_VTOL_LAND || id == MAV_CMD_NAV_PAYLOAD_PLACE) {
         if (landing_with_fixed_wing_spiral_approach()) {
             return plane.vtol_approach_s.approach_stage == Plane::Landing_ApproachStage::VTOL_LANDING;
         } else {
@@ -3851,11 +3905,11 @@ bool QuadPlane::in_vtol_land_approach(void) const
 bool QuadPlane::in_vtol_land_descent(void) const
 {
     if (plane.control_mode == &plane.mode_qrtl &&
-        (poscontrol.get_state() == QPOS_LAND_DESCEND || poscontrol.get_state() == QPOS_LAND_FINAL)) {
+        (poscontrol.get_state() == QPOS_LAND_DESCEND || poscontrol.get_state() == QPOS_LAND_FINAL || poscontrol.get_state() == QPOS_CLIMB_UP)) {
         return true;
     }
     if (in_vtol_auto() && is_vtol_land(plane.mission.get_current_nav_cmd().id) &&
-        (poscontrol.get_state() == QPOS_LAND_DESCEND || poscontrol.get_state() == QPOS_LAND_FINAL)) {
+        (poscontrol.get_state() == QPOS_LAND_DESCEND || poscontrol.get_state() == QPOS_LAND_FINAL || poscontrol.get_state() == QPOS_CLIMB_UP)) {
         return true;
     }
     return false;
@@ -4332,6 +4386,11 @@ bool QuadPlane::allow_servo_auto_trim()
 bool QuadPlane::landing_with_fixed_wing_spiral_approach(void) const
 {
     const AP_Mission::Mission_Command cmd = plane.mission.get_current_nav_cmd();
+
+    if (cmd.id == MAV_CMD_NAV_PAYLOAD_PLACE &&
+        option_is_set(QuadPlane::OPTION::MISSION_LAND_FW_APPROACH)) {
+        return true;
+    }
 
     return ((cmd.id == MAV_CMD_NAV_VTOL_LAND) &&
             (option_is_set(QuadPlane::OPTION::MISSION_LAND_FW_APPROACH) ||
