@@ -202,8 +202,10 @@ void GCS_MAVLINK_Plane::handle_land_sensor_status(const mavlink_land_sensor_stat
     if(packet.sensor_status == 1)
         gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is connected");
 
-    else if(packet.sensor_status == 2)  
+    else if(packet.sensor_status == 2) {  
         gcs().send_text(MAV_SEVERITY_INFO, "IPLS Test: Sensor is not connected");
+        plane.play_indicator(Plane::AUDIO_INDICATOR::IPLS_UNHEALTHY);
+    }
 
 }
 

@@ -375,6 +375,13 @@ private:
 
     // Auth takeoff flag
     uint8_t auth_takeoff_flag;
+
+    enum AUDIO_INDICATOR
+    {
+        IPLS_UNHEALTHY = 1,
+
+    };
+    void play_indicator(uint8_t flag);
     /////////////////////////////////////////////////
 
 #if HAL_QUADPLANE_ENABLED
