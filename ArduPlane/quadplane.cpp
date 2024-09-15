@@ -1692,6 +1692,8 @@ void SLT_Transition::update()
             transition_start_ms = 0;
             transition_low_airspeed_ms = 0;
             gcs().send_text(MAV_SEVERITY_INFO, "Transition done");
+            plane.flight_completion_status = Plane::FLIGHT_RUNNING_STATUS::MISSION_STARTED;
+            gcs().send_message(MSG_FLT_STATUS);
         }
         float trans_time_ms = MAX((float)quadplane.transition_time_ms.get(),1);
         float transition_scale = (trans_time_ms - transition_timer_ms) / trans_time_ms;
@@ -3413,6 +3415,8 @@ bool QuadPlane::check_land_complete(void)
             // disarm on land unless we have MIS_OPTIONS setup to
             // continue after land in AUTO
             plane.arming.disarm(AP_Arming::Method::LANDED);
+            plane.flight_completion_status = Plane::FLIGHT_RUNNING_STATUS::LANDED;
+            gcs().send_message(MSG_FLT_STATUS);
         }
         return true;
     }

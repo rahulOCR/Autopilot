@@ -366,6 +366,15 @@ private:
 
 
     //////////////////////////////////////////////////
+    enum FLIGHT_RUNNING_STATUS
+    {
+        UNINITIALIZED = 0,
+        MISSION_STARTED,
+        LANDED,
+    };
+    
+    uint8_t flight_completion_status;
+    
     enum TAKEOFF_AUTH_STATUS
     {
         NONE = 0,

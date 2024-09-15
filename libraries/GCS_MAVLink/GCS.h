@@ -302,6 +302,7 @@ public:
 #endif
     virtual void send_uav_cred() {};
     virtual void send_distance_travelled() {};
+    virtual void send_flight_status() {};
     virtual void send_attitude() const;
     virtual void send_attitude_quaternion() const;
     void send_autopilot_version() const;

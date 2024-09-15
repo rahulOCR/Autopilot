@@ -167,6 +167,10 @@ void GCS_MAVLINK_Plane::send_distance_travelled()
     mavlink_msg_distance_travelled_send(chan, plane.distance_travelled);
 }
 
+void GCS_MAVLINK_Plane::send_flight_status()
+{
+    mavlink_msg_flt_status_send(chan, plane.flight_completion_status);
+}
 
 // handle credential request
 void GCS_MAVLINK_Plane::handle_cred_request(const mavlink_req_uav_cred_t &packet)
