@@ -256,10 +256,27 @@ void GCS_MAVLINK::handle_param_request_read(const mavlink_message_t &msg)
     }
 }
 
+void GCS_MAVLINK::handle_parm_auth(const mavlink_message_t &msg)
+{
+    mavlink_parm_auth_t packet;
+    mavlink_msg_parm_auth_decode(&msg, &packet);
+    if(packet.param_lock == 1) {
+        gcs().send_text(MAV_SEVERITY_WARNING, "Settings are unlocked now ");
+        unlock_param_write = true;
+    }
+}
+
 void GCS_MAVLINK::handle_param_set(const mavlink_message_t &msg)
 {
     mavlink_param_set_t packet;
     mavlink_msg_param_set_decode(&msg, &packet);
+    
+    if(! unlock_param_write) {
+        
+        gcs().send_text(MAV_SEVERITY_WARNING, "Param write denied ");
+        return;
+        
+    }
     enum ap_var_type var_type;
 
     // set parameter
@@ -460,5 +477,9 @@ void GCS_MAVLINK::handle_common_param_message(const mavlink_message_t &msg)
     case MAVLINK_MSG_ID_PARAM_REQUEST_READ:
         handle_param_request_read(msg);
         break;
+    case MAVLINK_MSG_ID_PARM_AUTH:
+        handle_parm_auth(msg);
+        break;
     }
+    
 }

@@ -156,6 +156,7 @@ public:
     void        queued_mission_request_send();
 
     bool sending_mavlink1() const;
+    bool unlock_param_write;
 
     // returns true if we are requesting any items from the GCS:
     bool requesting_mission_items() const;
@@ -487,6 +488,7 @@ protected:
 
     void handle_common_param_message(const mavlink_message_t &msg);
     void handle_param_set(const mavlink_message_t &msg);
+    void handle_parm_auth(const mavlink_message_t &msg);
     void handle_param_request_list(const mavlink_message_t &msg);
     void handle_param_request_read(const mavlink_message_t &msg);
     virtual bool params_ready() const { return true; }
